@@ -22,4 +22,7 @@ router.post('/account/edit', adminController.editAccount)
 // POST set team-owner
 router.post('/teamowner/patch', adminController.setTeamOwner)
 
+// POST  add user
+router.post('/user/add', adminController.addUser)
+
 module.exports = router

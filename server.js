@@ -7,7 +7,9 @@ const mongoose = require('mongoose')
 // import files
 const entityRoutes = require('./routes/entities')
 const auctionRoutes = require('./routes/auction')
-const adminroutes = require('./routes/admin')
+const adminRoutes = require('./routes/admin')
+const authRoutes = require('./routes/auth')
+const authMiddleware = require('./middlewares/auth')
 
 // initialize objects
 const app = express()
@@ -23,18 +25,24 @@ app.use(bodyParser.json())
 // })
 
 // routes
-app.use('/api/v1/admin', adminroutes)
+app.use(authMiddleware.setAuth)
+app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1', entityRoutes)
 
 const PORT = process.env.PORT || 3000
-// connect mongoose then listen to PORT
+// connect mongoose client then listen to PORT
+mongoose.set('strictQuery', true)
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then((result) => {
     console.log('mongoose client Connected!')
     app.listen(PORT, () => {
-      console.log(`listening to port ${PORT}`)
+      console.log(`server listening to port: ${PORT}`)
     })
   })
   .catch((err) => {
