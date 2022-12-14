@@ -1,3 +1,6 @@
+// import modules
+const bcryptjs = require('bcryptjs')
+
 const Player = require('../models/player')
 const Account = require('../models/account')
 const Team = require('../models/team')
@@ -113,38 +116,76 @@ exports.editTeam = (req, res) => {
 }
 
 exports.setTeamOwner = async (req, res) => {
-  const { teamId, playerId, email, password } = req.body
-  Team.findById(teamId)
-    .populate('teamOwner.userId')
-    .then((team) => {
-      let user
-      if (team.teamOwner) {
-        user = team.teamOwner.userId
-        user.email = email
-        user.password = password
-        user.role = 'owner'
-      } else {
-        user = new User({
-          email: email,
-          password: password,
-          role: 'owner',
+  const { teamId, playerId, email, password, budget } = req.body
+  Promise.all([
+    Team.findById(teamId).populate('teamOwner.userId'),
+    bcryptjs.hash(password, 12),
+  ]).then(([team, hashedPassword]) => {
+    let user
+    if (team.teamOwner) {
+      user = team.teamOwner.userId
+      user.email = email
+      user.password = hashedPassword
+      user.role = 'owner'
+    } else {
+      user = new User({
+        email: email,
+        password: hashedPassword,
+        role: 'owner',
+      })
+    }
+    return user
+      .save()
+      .then((user) => {
+        team.teamOwner = {
+          userId: user,
+          playerId: playerId,
+          budget: budget,
+        }
+        return team.save()
+      })
+      .then((team) => {
+        return res.json({
+          status: 'ok',
+          msg: 'team owner is set successfully',
+          teamOwner: team.teamOwner,
+        })
+      })
+  })
+}
+
+exports.addUser = (req, res) => {
+  const { email, password, role, name } = req.body
+  // check if user exists
+  User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'User exists',
+          existingUser: {
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          },
         })
       }
-      return user
-        .save()
-        .then((user) => {
-          team.teamOwner = {
-            userId: user,
-            playerId: playerId,
-          }
-          return team.save()
-        })
-        .then((team) => {
-          return res.json({
-            status: 'ok',
-            msg: 'team owner is set successfully',
-            teamOwner: team.teamOwner,
-          })
-        })
+      // create new user
+      const newUser = new User({
+        name: name,
+        email: email,
+        role: role,
+      })
+      return bcryptjs.hash(password, 12).then((hashedPassword) => {
+        newUser.password = hashedPassword
+        return newUser.save()
+      })
+    })
+    .then((user) => {
+      res.status(200).json({
+        status: 'ok',
+        msg: 'User created',
+        user: user,
+      })
     })
 }

@@ -21,6 +21,11 @@ const TeamSchema = Schema({
         required: true,
         ref: 'User',
       },
+      budget: {
+        type: Number,
+        required: true,
+      },
+      bids: [{ type: Schema.Types.ObjectId, ref: 'Bid' }],
     },
     _id: false,
   },

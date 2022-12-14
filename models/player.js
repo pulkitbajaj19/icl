@@ -27,6 +27,7 @@ const PlayerSchema = Schema({
   imageUrl: {
     type: String,
   },
+  bids: [{ type: Schema.Types.ObjectId, ref: 'Bid' }],
 })
 
 module.exports = mongoose.model('Player', PlayerSchema)
