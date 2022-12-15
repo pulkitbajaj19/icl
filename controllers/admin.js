@@ -53,6 +53,17 @@ exports.editPlayer = (req, res) => {
     })
 }
 
+exports.deletePlayer = (req, res) => {
+  const { playerId } = req.params
+  Player.findByIdAndDelete(playerId).then((data) => {
+    return res.status(200).json({
+      status: 'ok',
+      msg: 'Deleted',
+      data: data,
+    })
+  })
+}
+
 exports.addAccount = (req, res) => {
   const { name, totalCount } = req.body
   if (!name)
@@ -88,6 +99,18 @@ exports.editAccount = (req, res) => {
         account: account,
       })
     })
+}
+
+exports.deleteAccount = (req, res) => {
+  console.log('deleting account')
+  const { accountId } = req.params
+  Account.findByIdAndDelete(accountId).then((data) => {
+    return res.status(200).json({
+      status: 'ok',
+      msg: 'account deleted',
+      data: data,
+    })
+  })
 }
 
 exports.addTeam = (req, res) => {
@@ -130,6 +153,17 @@ exports.editTeam = (req, res) => {
         team: team,
       })
     })
+}
+
+exports.deleteTeam = (req, res) => {
+  const { teamId } = req.params
+  Team.findByIdAndDelete(teamId).then((data) => {
+    res.status(200).json({
+      status: 'ok',
+      msg: 'team deleted',
+      data: data,
+    })
+  })
 }
 
 exports.setTeamOwner = async (req, res) => {
