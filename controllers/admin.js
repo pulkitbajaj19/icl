@@ -114,13 +114,13 @@ exports.deleteAccount = (req, res) => {
 }
 
 exports.addTeam = (req, res) => {
+  console.log('-----body', req.body)
+  console.log('----file: ', req.file)
   const { name } = req.body
-  if (!name) {
-    return res.status(400).json({
-      status: 'error',
-      msg: 'Insufficient data',
-    })
-  }
+  if (!name)
+    return res.status(400).json({ status: 'error', msg: 'Insufficient data' })
+
+  // else add the team
   let imageUrl
   if (req.file) {
     imageUrl = req.file.path

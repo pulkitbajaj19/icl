@@ -17,7 +17,12 @@ const authMiddleware = require('./middlewares/auth')
 const app = express()
 const multerStorage = multer.diskStorage({
   filename: (req, file, cb) => {
-    cb(null, new Date().getTime() + '-' + file.originalname)
+    cb(
+      null,
+      new Date().getTime() +
+        '-' +
+        file.originalname.replace(/[^a-z0-9.]/gi, '_').toLowerCase()
+    )
   },
   destination: (req, file, cb) => {
     fs.mkdirSync('static/images', { recursive: true })
@@ -27,7 +32,7 @@ const multerStorage = multer.diskStorage({
 const multerMiddleware = multer({
   storage: multerStorage,
   limits: {
-    fileSize: (process.env.MULTER_MAX_FILE_SIZE || 4) * 1024 * 1024,
+    fileSize: (process.env.MAX_IMAGE_SIZE_IN_MB || 4) * 1024 * 1024,
   },
 }).single('image')
 
@@ -46,9 +51,10 @@ app.use((req, res, next) => {
     if (err) {
       console.log('Error while storing files using multer storage!\n', err)
       req.multerError = err
-      return res.status(400).json({
+      return res.json({
         status: 'error',
         msg: 'Error while storing file using multer',
+        err: err,
       })
     }
     next()
