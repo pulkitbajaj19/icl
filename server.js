@@ -69,6 +69,14 @@ app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1', entityRoutes)
 
+// handling errors
+app.use((err, req, res, next) => {
+  return res.status(500).json({
+    status: 'error',
+    msg: err.message,
+  })
+})
+
 const PORT = process.env.PORT || 8000
 // connect mongoose client then listen to PORT
 mongoose.set('strictQuery', true)

@@ -11,6 +11,7 @@ const AccountSchema = Schema({
   },
   participantsCount: {
     type: Number,
+    default: 0,
   },
 })
 

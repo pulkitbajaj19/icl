@@ -5,13 +5,30 @@ const Player = require('../models/player')
 const Account = require('../models/account')
 const Team = require('../models/team')
 const User = require('../models/user')
+const account = require('../models/account')
 
-exports.addPlayer = (req, res) => {
+exports.addPlayer = (req, res, next) => {
   const { name, accountId, employeeId, email, skill, bio } = req.body
+  // check validity of name
+  if (!name) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'Name is undefined',
+    })
+  }
+  // check validity of accountId
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'AccountId is undefined',
+    })
+  }
+  // set imageurl if image is uploaded
   let imageUrl
   if (req.file) {
     imageUrl = req.file.path
   }
+  // create player object
   const player = new Player({
     name,
     accountId,
@@ -19,15 +36,28 @@ exports.addPlayer = (req, res) => {
     email,
     skill,
     bio,
+    imageUrl,
   })
 
-  player.save().then((player) => {
-    return res.json({
-      status: 'ok',
-      msg: 'player added',
-      player: player,
+  player
+    .save()
+    .then((player) => {
+      return Account.findById(accountId)
+        .then((account) => {
+          account.participantsCount = account.participantsCount + 1
+          return account.save()
+        })
+        .then((account) => {
+          return res.status(200).json({
+            status: 'ok',
+            msg: 'player saved',
+            player: player,
+          })
+        })
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.editPlayer = (req, res) => {
@@ -53,21 +83,35 @@ exports.editPlayer = (req, res) => {
     })
 }
 
-exports.deletePlayer = (req, res) => {
+exports.deletePlayer = (req, res, next) => {
   const { playerId } = req.params
-  Player.findByIdAndDelete(playerId).then((player) => {
-    if (!player) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'Player not found',
-      })
-    }
-    return res.status(200).json({
-      status: 'ok',
-      msg: 'Deleted',
-      player: player,
+  Player.findByIdAndDelete(playerId)
+    .then((player) => {
+      if (!player) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'Player not found',
+        })
+      }
+      // decrease participant count of account
+      return Account.findById(player.accountId)
+        .then((account) => {
+          if (account) {
+            account.participantsCount -= 1
+            return account.save()
+          }
+        })
+        .then((account) => {
+          return res.status(200).json({
+            status: 'ok',
+            msg: 'Deleted',
+            player: player,
+          })
+        })
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.addAccount = (req, res) => {
