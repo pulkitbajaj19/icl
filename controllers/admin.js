@@ -7,8 +7,11 @@ const Team = require('../models/team')
 const User = require('../models/user')
 
 exports.addPlayer = (req, res) => {
-  const { name, accountId, employeeId, email, skill, bio, imageUrl } = req.body
-
+  const { name, accountId, employeeId, email, skill, bio } = req.body
+  let imageUrl
+  if (req.file) {
+    imageUrl = req.file.path
+  }
   const player = new Player({
     name,
     accountId,
@@ -16,7 +19,6 @@ exports.addPlayer = (req, res) => {
     email,
     skill,
     bio,
-    imageUrl,
   })
 
   player.save().then((player) => {
@@ -53,6 +55,11 @@ exports.editPlayer = (req, res) => {
 
 exports.addAccount = (req, res) => {
   const { name, totalCount } = req.body
+  if (!name)
+    return res.status(400).json({
+      status: 'error',
+      msg: 'Insufficient data',
+    })
   const account = new Account({
     name,
     totalCount,
@@ -84,7 +91,17 @@ exports.editAccount = (req, res) => {
 }
 
 exports.addTeam = (req, res) => {
-  const { name, imageUrl } = req.body
+  const { name } = req.body
+  if (!name) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'Insufficient data',
+    })
+  }
+  let imageUrl
+  if (req.file) {
+    imageUrl = req.file.path
+  }
   const team = new Team({
     name,
     imageUrl,
