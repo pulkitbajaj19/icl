@@ -34,7 +34,4 @@ router.post('/teamowner/patch', adminController.setTeamOwner)
 // POST  add user
 router.post('/user/add', adminController.addUser)
 
-router.delete('/test', (req, res) => {
-  console.log('sodjfosdjf')
-})
 module.exports = router

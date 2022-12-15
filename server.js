@@ -40,6 +40,7 @@ const multerMiddleware = multer({
 app.use('/', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Headers', '*')
+  res.header('Access-Control-Allow-Methods', '*')
   next()
 })
 
@@ -68,7 +69,7 @@ app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1', entityRoutes)
 
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 8000
 // connect mongoose client then listen to PORT
 mongoose.set('strictQuery', true)
 mongoose

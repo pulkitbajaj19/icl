@@ -55,11 +55,17 @@ exports.editPlayer = (req, res) => {
 
 exports.deletePlayer = (req, res) => {
   const { playerId } = req.params
-  Player.findByIdAndDelete(playerId).then((data) => {
+  Player.findByIdAndDelete(playerId).then((player) => {
+    if (!player) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Player not found',
+      })
+    }
     return res.status(200).json({
       status: 'ok',
       msg: 'Deleted',
-      data: data,
+      player: player,
     })
   })
 }
@@ -104,11 +110,17 @@ exports.editAccount = (req, res) => {
 exports.deleteAccount = (req, res) => {
   console.log('deleting account')
   const { accountId } = req.params
-  Account.findByIdAndDelete(accountId).then((data) => {
+  Account.findByIdAndDelete(accountId).then((account) => {
+    if (!account) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'account not found',
+      })
+    }
     return res.status(200).json({
       status: 'ok',
       msg: 'account deleted',
-      data: data,
+      account: account,
     })
   })
 }
@@ -157,11 +169,17 @@ exports.editTeam = (req, res) => {
 
 exports.deleteTeam = (req, res) => {
   const { teamId } = req.params
-  Team.findByIdAndDelete(teamId).then((data) => {
-    res.status(200).json({
+  Team.findByIdAndDelete(teamId).then((team) => {
+    if (!team) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'team not found',
+      })
+    }
+    return res.status(200).json({
       status: 'ok',
       msg: 'team deleted',
-      data: data,
+      team: team,
     })
   })
 }
