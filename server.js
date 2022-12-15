@@ -17,12 +17,13 @@ const app = express()
 // middlewares
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
+
 // handling cors policy
-// app.use('/', (req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', '*')
-//   res.header('Access-Control-Allow-Headers', '*')
-//   next()
-// })
+app.use('/', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', '*')
+  next()
+})
 
 // routes
 app.use(authMiddleware.setAuth)

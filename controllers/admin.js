@@ -189,3 +189,39 @@ exports.addUser = (req, res) => {
       })
     })
 }
+
+exports.addUser = (req, res) => {
+  const { email, password, role, name } = req.body
+  // check if user exists
+  User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'User exists',
+          existingUser: {
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          },
+        })
+      }
+      // create new user
+      const newUser = new User({
+        name: name,
+        email: email,
+        role: role,
+      })
+      return bcryptjs.hash(password, 12).then((hashedPassword) => {
+        newUser.password = hashedPassword
+        return newUser.save()
+      })
+    })
+    .then((user) => {
+      res.status(200).json({
+        status: 'ok',
+        msg: 'User created',
+        user: user,
+      })
+    })
+}
