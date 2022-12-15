@@ -3,6 +3,8 @@ require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
+const multer = require('multer')
+const fs = require('fs')
 
 // import files
 const entityRoutes = require('./routes/entities')
@@ -13,16 +15,44 @@ const authMiddleware = require('./middlewares/auth')
 
 // initialize objects
 const app = express()
-
-// middlewares
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+const multerStorage = multer.diskStorage({
+  filename: (req, file, cb) => {
+    cb(null, new Date().getTime() + '-' + file.originalname)
+  },
+  destination: (req, file, cb) => {
+    fs.mkdirSync('static/images', { recursive: true })
+    cb(null, './static/images')
+  },
+})
+const multerMiddleware = multer({
+  storage: multerStorage,
+  limits: {
+    fileSize: (process.env.MULTER_MAX_FILE_SIZE || 4) * 1024 * 1024,
+  },
+}).single('image')
 
 // handling cors policy
 app.use('/', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Headers', '*')
   next()
+})
+
+// middlewares
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+app.use((req, res, next) => {
+  multerMiddleware(req, res, (err) => {
+    if (err) {
+      console.log('Error while storing files using multer storage!\n', err)
+      req.multerError = err
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Error while storing file using multer',
+      })
+    }
+    next()
+  })
 })
 
 // routes
