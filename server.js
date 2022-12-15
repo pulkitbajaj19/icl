@@ -5,6 +5,7 @@ const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const multer = require('multer')
 const fs = require('fs')
+const path = require('path')
 
 // import files
 const entityRoutes = require('./routes/entities')
@@ -61,9 +62,12 @@ app.use((req, res, next) => {
     next()
   })
 })
-
-// routes
 app.use(authMiddleware.setAuth)
+
+// serve static files
+app.use('/static', express.static(path.join(__dirname, 'static')))
+
+// serve routes
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
