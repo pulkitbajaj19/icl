@@ -2,6 +2,7 @@ const Team = require('../models/team')
 
 exports.getAllTeams = (req, res, next) => {
   Team.find()
+    .populate('teamOwner.playerId')
     .lean()
     .then((teams) => {
       return res.json({
