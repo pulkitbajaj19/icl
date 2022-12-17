@@ -60,9 +60,8 @@ exports.addPlayer = (req, res, next) => {
     })
 }
 
-exports.editPlayer = (req, res) => {
-  const { playerId, name, accountId, employeeId, email, skill, bio, imageUrl } =
-    req.body
+exports.editPlayer = (req, res, next) => {
+  const { playerId, name, accountId, employeeId, email, skill, bio } = req.body
   Player.findById(playerId)
     .then((player) => {
       player.name = name
@@ -71,15 +70,21 @@ exports.editPlayer = (req, res) => {
       player.email = email
       player.skill = skill
       player.bio = bio
-      player.imageUrl = imageUrl
+      // set image if provided
+      if (req.file) {
+        player.imageUrl = req.file.path
+      }
       return player.save()
     })
     .then((player) => {
-      return res.json({
+      return res.status(200).json({
         status: 'ok',
         msg: 'player edited',
         player: player,
       })
+    })
+    .catch((err) => {
+      next(err)
     })
 }
 
@@ -114,7 +119,7 @@ exports.deletePlayer = (req, res, next) => {
     })
 }
 
-exports.addAccount = (req, res) => {
+exports.addAccount = (req, res, next) => {
   const { name, totalCount } = req.body
   if (!name)
     return res.status(400).json({
@@ -125,16 +130,21 @@ exports.addAccount = (req, res) => {
     name,
     totalCount,
   })
-  account.save().then((account) => {
-    return res.json({
-      status: 'ok',
-      msg: 'account added',
-      account: account,
+  account
+    .save()
+    .then((account) => {
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'account added',
+        account: account,
+      })
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.editAccount = (req, res) => {
+exports.editAccount = (req, res, next) => {
   const { accountId, name, totalCount } = req.body
   Account.findById(accountId)
     .then((account) => {
@@ -143,33 +153,40 @@ exports.editAccount = (req, res) => {
       return account.save()
     })
     .then((account) => {
-      return res.json({
+      return res.status(200).json({
         status: 'ok',
         msg: 'account edited',
         account: account,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.deleteAccount = (req, res) => {
+exports.deleteAccount = (req, res, next) => {
   console.log('deleting account')
   const { accountId } = req.params
-  Account.findByIdAndDelete(accountId).then((account) => {
-    if (!account) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'account not found',
+  Account.findByIdAndDelete(accountId)
+    .then((account) => {
+      if (!account) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'account not found',
+        })
+      }
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'account deleted',
+        account: account,
       })
-    }
-    return res.status(200).json({
-      status: 'ok',
-      msg: 'account deleted',
-      account: account,
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.addTeam = (req, res) => {
+exports.addTeam = (req, res, next) => {
   console.log('-----body', req.body)
   console.log('----file: ', req.file)
   const { name } = req.body
@@ -185,89 +202,107 @@ exports.addTeam = (req, res) => {
     name,
     imageUrl,
   })
-  team.save().then((team) => {
-    return res.json({
-      status: 'ok',
-      msg: 'team added',
-      team: team,
+  team
+    .save()
+    .then((team) => {
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'team added',
+        team: team,
+      })
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.editTeam = (req, res) => {
+exports.editTeam = (req, res, next) => {
   const { teamId, name, imageUrl } = req.body
   Team.findById(teamId)
     .then((team) => {
       team.name = name
-      team.imageUrl = imageUrl
+      if (req.file) {
+        team.imageUrl = req.file.path
+      }
       return team.save()
     })
     .then((team) => {
-      return res.json({
+      return res.status(200).json({
         status: 'ok',
         msg: 'team edited',
         team: team,
       })
     })
-}
-
-exports.deleteTeam = (req, res) => {
-  const { teamId } = req.params
-  Team.findByIdAndDelete(teamId).then((team) => {
-    if (!team) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'team not found',
-      })
-    }
-    return res.status(200).json({
-      status: 'ok',
-      msg: 'team deleted',
-      team: team,
+    .catch((err) => {
+      next(err)
     })
-  })
 }
 
-exports.setTeamOwner = async (req, res) => {
+exports.deleteTeam = (req, res, next) => {
+  const { teamId } = req.params
+  Team.findByIdAndDelete(teamId)
+    .then((team) => {
+      if (!team) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'team not found',
+        })
+      }
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'team deleted',
+        team: team,
+      })
+    })
+    .catch((err) => {
+      next(err)
+    })
+}
+
+exports.setTeamOwner = async (req, res, next) => {
   const { teamId, playerId, email, password, budget } = req.body
   Promise.all([
     Team.findById(teamId).populate('teamOwner.userId'),
     bcryptjs.hash(password, 12),
-  ]).then(([team, hashedPassword]) => {
-    let user
-    if (team.teamOwner) {
-      user = team.teamOwner.userId
-      user.email = email
-      user.password = hashedPassword
-      user.role = 'owner'
-    } else {
-      user = new User({
-        email: email,
-        password: hashedPassword,
-        role: 'owner',
-      })
-    }
-    return user
-      .save()
-      .then((user) => {
-        team.teamOwner = {
-          userId: user,
-          playerId: playerId,
-          budget: budget,
-        }
-        return team.save()
-      })
-      .then((team) => {
-        return res.json({
-          status: 'ok',
-          msg: 'team owner is set successfully',
-          teamOwner: team.teamOwner,
+  ])
+    .then(([team, hashedPassword]) => {
+      let user
+      if (team.teamOwner) {
+        user = team.teamOwner.userId
+        user.email = email
+        user.password = hashedPassword
+        user.role = 'owner'
+      } else {
+        user = new User({
+          email: email,
+          password: hashedPassword,
+          role: 'owner',
         })
-      })
-  })
+      }
+      return user
+        .save()
+        .then((user) => {
+          team.teamOwner = {
+            userId: user,
+            playerId: playerId,
+            budget: budget,
+          }
+          return team.save()
+        })
+        .then((team) => {
+          return res.status(200).json({
+            status: 'ok',
+            msg: 'team owner is set successfully',
+            teamOwner: team.teamOwner,
+          })
+        })
+    })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.addUser = (req, res) => {
+exports.addUser = (req, res, next) => {
   const { email, password, role, name } = req.body
   // check if user exists
   User.findOne({ email })
@@ -301,9 +336,12 @@ exports.addUser = (req, res) => {
         user: user,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.addUser = (req, res) => {
+exports.addUser = (req, res, next) => {
   const { email, password, role, name } = req.body
   // check if user exists
   User.findOne({ email })
@@ -336,5 +374,8 @@ exports.addUser = (req, res) => {
         msg: 'User created',
         user: user,
       })
+    })
+    .catch((err) => {
+      next(err)
     })
 }

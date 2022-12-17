@@ -10,6 +10,9 @@ exports.getAllPlayers = (req, res, next) => {
         players: players,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.getPlayerInfo = (req, res, next) => {
@@ -22,5 +25,8 @@ exports.getPlayerInfo = (req, res, next) => {
         msg: 'player info fetched successsfully',
         player: player,
       })
+    })
+    .then((err) => {
+      next(err)
     })
 }

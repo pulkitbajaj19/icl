@@ -11,6 +11,9 @@ exports.getAllTeams = (req, res, next) => {
         teams: teams,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.getTeamInfo = (req, res, next) => {
@@ -23,6 +26,9 @@ exports.getTeamInfo = (req, res, next) => {
         msg: 'team info fetched successfully',
         team: team,
       })
+    })
+    .catch((err) => {
+      next(err)
     })
 }
 
@@ -42,6 +48,9 @@ exports.getAllOwners = (req, res, next) => {
         teamOwners: teamOwners,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.getOwnerById = (req, res, next) => {
@@ -60,5 +69,8 @@ exports.getOwnerById = (req, res, next) => {
         msg: 'team owner fetched successfully',
         teamOwner: teamOwner,
       })
+    })
+    .catch((err) => {
+      next(err)
     })
 }

@@ -8,35 +8,39 @@ const User = require('../models/user')
 // constants
 const LOGIN_PERIOD_SEC = 36000
 
-exports.getUser = async (req, res) => {
+exports.getUser = async (req, res, next) => {
   if (!req.user) {
     return res.status(400).json({
       status: 'error',
       msg: 'user not set',
     })
   }
-  User.findById(req.user.id).then((user) => {
-    if (!user) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'User not found',
+  User.findById(req.user.id)
+    .then((user) => {
+      if (!user) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'User not found',
+        })
+      }
+      // return user info
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'User fetched successfully',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       })
-    }
-    // return user info
-    return res.status(200).json({
-      status: 'ok',
-      msg: 'User fetched successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
     })
-  })
+    .catch((err) => {
+      next(err)
+    })
 }
 
-exports.postLogin = (req, res) => {
+exports.postLogin = (req, res, next) => {
   const { email, password } = req.body
 
   // check if user exists
@@ -49,7 +53,7 @@ exports.postLogin = (req, res) => {
         })
       }
       // if user exists Match password
-      bcryptjs.compare(password, user.password).then((isMatch) => {
+      return bcryptjs.compare(password, user.password).then((isMatch) => {
         if (!isMatch) {
           return res.status(400).json({
             msg: 'Incorrect password',
@@ -78,6 +82,9 @@ exports.postLogin = (req, res) => {
           }
         )
       })
+    })
+    .catch((err) => {
+      next(err)
     })
 }
 

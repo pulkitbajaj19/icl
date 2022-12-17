@@ -10,6 +10,9 @@ exports.getAllAccounts = (req, res, next) => {
         accounts: accounts,
       })
     })
+    .catch((err) => {
+      next(err)
+    })
 }
 
 exports.getAccountById = (req, res, next) => {
@@ -23,6 +26,9 @@ exports.getAccountById = (req, res, next) => {
           msg: 'account fetched',
           account: account,
         })
+      })
+      .catch((err) => {
+        next(err)
       })
   }
 }
