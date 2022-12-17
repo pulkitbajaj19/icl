@@ -71,6 +71,7 @@ app.use('/static', express.static(path.join(__dirname, 'static')))
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
+app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1', entityRoutes)
 
 // handling errors

@@ -5,7 +5,6 @@ const Player = require('../models/player')
 const Account = require('../models/account')
 const Team = require('../models/team')
 const User = require('../models/user')
-const account = require('../models/account')
 
 exports.addPlayer = (req, res, next) => {
   console.log('-----body', req.body)
