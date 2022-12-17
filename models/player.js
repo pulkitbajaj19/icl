@@ -17,9 +17,16 @@ const PlayerSchema = Schema({
   email: {
     type: String,
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Other'],
+  },
   skill: {
     type: String,
     enum: ['Bowler', 'Spinner', 'All Rounder', 'Batsman', 'Keeper'],
+  },
+  rating: {
+    type: Number,
   },
   bio: {
     type: String,

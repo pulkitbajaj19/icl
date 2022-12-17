@@ -8,7 +8,9 @@ const User = require('../models/user')
 const account = require('../models/account')
 
 exports.addPlayer = (req, res, next) => {
-  const { name, accountId, employeeId, email, skill, bio } = req.body
+  console.log('-----body', req.body)
+  const { name, accountId, employeeId, email, skill, bio, gender, rating } =
+    req.body
   // check validity of name
   if (!name) {
     return res.status(400).json({
@@ -37,6 +39,8 @@ exports.addPlayer = (req, res, next) => {
     skill,
     bio,
     imageUrl,
+    gender,
+    rating,
   })
 
   player
@@ -61,7 +65,18 @@ exports.addPlayer = (req, res, next) => {
 }
 
 exports.editPlayer = (req, res, next) => {
-  const { playerId, name, accountId, employeeId, email, skill, bio } = req.body
+  console.log('-----------body', req.body)
+  const {
+    playerId,
+    name,
+    accountId,
+    employeeId,
+    email,
+    skill,
+    bio,
+    gender,
+    rating,
+  } = req.body
   Player.findById(playerId)
     .then((player) => {
       player.name = name
@@ -70,6 +85,8 @@ exports.editPlayer = (req, res, next) => {
       player.email = email
       player.skill = skill
       player.bio = bio
+      player.gender = gender
+      player.rating = rating
       // set image if provided
       if (req.file) {
         player.imageUrl = req.file.path
