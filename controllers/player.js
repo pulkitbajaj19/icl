@@ -26,7 +26,7 @@ exports.getPlayerInfo = (req, res, next) => {
         player: player,
       })
     })
-    .then((err) => {
+    .catch((err) => {
       next(err)
     })
 }
