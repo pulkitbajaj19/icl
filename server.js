@@ -92,8 +92,13 @@ mongoose
   })
   .then((result) => {
     console.log('mongoose client Connected!')
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`server listening to port: ${PORT}`)
+    })
+    // initialize socket connection and check connection
+    const io = require('./socket').init(server)
+    io.on('connection', () => {
+      console.log('Client connected!')
     })
   })
   .catch((err) => {
