@@ -170,6 +170,14 @@ module.exports.startAuction = (req, res, next) => {
     })
 }
 
+module.exports.pauseAuction = (req, res, next) => {
+  clearInterval(auctionTimer)
+  return res.status(200).json({
+    status: 'ok',
+    msg: 'auction paused',
+  })
+}
+
 module.exports.postBid = (req, res, next) => {
   const { playerId, teamId } = req.body
   if (!playerId || !teamId) {
@@ -207,7 +215,7 @@ module.exports.postBid = (req, res, next) => {
         'currentPlayer.clock': AUCTION_INTERVAL_IN_SEC,
         bids: [
           ...store.bids,
-          { playerId, teamId, amount: store.currentPlayer.currentAmount },
+          { playerId, teamId, amount: store.currentPlayer.bidAmount },
         ],
       }).then((store) => {
         // resyncing the clocks
