@@ -5,8 +5,11 @@ const auctionController = require('../controllers/auction')
 // POST  start auction
 router.post('/start', auctionController.startAuction)
 
-// GET pause auction
-router.get('/pause', auctionController.pauseAuction)
+// POST pause auction
+router.post('/pause', auctionController.pauseAuction)
+
+// POST reset auction
+router.post('/reset', auctionController.resetAuction)
 
 // GET auction data
 router.get('/data', auctionController.getData)

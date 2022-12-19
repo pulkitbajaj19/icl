@@ -2,14 +2,18 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const PlayerSchema = Schema({
-  name: {
-    type: String,
-    required: true,
-  },
   accountId: {
     type: Schema.Types.ObjectId,
     required: true,
     ref: 'Account',
+  },
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Team',
+  },
+  name: {
+    type: String,
+    required: true,
   },
   employeeId: {
     type: Number,
@@ -34,7 +38,6 @@ const PlayerSchema = Schema({
   imageUrl: {
     type: String,
   },
-  bids: [{ type: Schema.Types.ObjectId, ref: 'Bid' }],
 })
 
 module.exports = mongoose.model('Player', PlayerSchema)

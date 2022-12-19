@@ -205,7 +205,7 @@ exports.deleteAccount = (req, res, next) => {
 exports.addTeam = (req, res, next) => {
   console.log('-----body', req.body)
   console.log('----file: ', req.file)
-  const { name } = req.body
+  const { name, accountId } = req.body
   if (!name)
     return res.status(400).json({ status: 'error', msg: 'Insufficient data' })
 
@@ -216,6 +216,7 @@ exports.addTeam = (req, res, next) => {
   }
   const team = new Team({
     name,
+    accountId,
     imageUrl,
   })
   team
@@ -233,10 +234,11 @@ exports.addTeam = (req, res, next) => {
 }
 
 exports.editTeam = (req, res, next) => {
-  const { teamId, name, imageUrl } = req.body
+  const { teamId, name, accountId } = req.body
   Team.findById(teamId)
     .then((team) => {
       team.name = name
+      team.accountId = accountId
       if (req.file) {
         team.imageUrl = req.file.path
       }

@@ -2,6 +2,10 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const TeamSchema = Schema({
+  accountId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Account',
+  },
   name: {
     type: String,
     required: true,
@@ -29,7 +33,6 @@ const TeamSchema = Schema({
     },
     _id: false,
   },
-  players: [{ type: Schema.Types.ObjectId, ref: 'Player' }],
 })
 
 module.exports = mongoose.model('Team', TeamSchema)

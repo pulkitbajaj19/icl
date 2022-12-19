@@ -1,4 +1,6 @@
 const socket = require('../socket')
+const Account = require('../models/account')
+const Team = require('../models/team')
 const Player = require('../models/player')
 const {
   initializeStore,
@@ -13,6 +15,8 @@ const {
 } = require('../constants')
 
 // AUCTION_SCHEMA : {
+//   state: (null/'ready'/'progress'/'completed'/)
+//   teams: [<teamId>]
 //   remainingPlayers : [<playerId>]
 //   unsoldPlayers: [<playerId>]
 //   soldPlayers: [<playerId>],
@@ -32,6 +36,8 @@ let auctionTimer
 let cnt_interval_iterations = 0
 
 const STORE_INITIAL_STATE = {
+  state: null,
+  teams: [],
   remainingPlayers: [],
   unsoldPlayers: [],
   soldPlayers: [],
@@ -48,70 +54,81 @@ const refreshClients = (eventType, data) => {
 }
 
 const updateAuctionState = () => {
-  getStore().then((store) => {
-    // stop the auction process as no player is defined for auction
-    if (!store.currentPlayer) {
-      clearInterval(auctionTimer)
-      return
-    }
-    // update clock for current player
-    else if (store.currentPlayer.clock > 0) {
-      store.currentPlayer.clock = store.currentPlayer.clock - 1
-    }
-    // ready next player for auction
-    else {
-      // if current player is bidded by some team then move it to sold state
-      if (store.currentPlayer.bids.length > 0) {
-        store.soldPlayers.push(store.currentPlayer.id)
-        store.playerLastBid[store.currentPlayer.id] =
-          store.currentPlayer.bids[store.currentPlayer.bids.length - 1]
-        store.currentPlayer = null
+  getStore()
+    .then((store) => {
+      // stop the auction process as no player is defined for auction
+      if (!store.currentPlayer) {
+        clearInterval(auctionTimer)
+        return
       }
-      // if no bid is made on current player then move it to unsold state
+      // update clock for current player
+      else if (store.currentPlayer.clock > 0) {
+        store.currentPlayer.clock = store.currentPlayer.clock - 1
+      }
+      // ready next player for auction
       else {
-        store.unsoldPlayers.push(store.currentPlayer.id)
-        store.currentPlayer = null
-      }
-      // if no player is remaining
-      if (store.remainingPlayers.length === 0) {
-        // if all players are sold then end auction
-        if (store.unsoldPlayers.length === 0) {
+        // if current player is bidded by some team then move it to sold state
+        if (store.currentPlayer.bids.length > 0) {
+          store.soldPlayers.push(store.currentPlayer.id)
+          store.playerLastBid[store.currentPlayer.id] =
+            store.currentPlayer.bids[store.currentPlayer.bids.length - 1]
           store.currentPlayer = null
-          clearInterval(auctionTimer)
-          updateStore(store).then((store) => {
-            console.log('----final-store', store)
-            refreshClients('auction-ended', store)
-          })
-          return
         }
-        // if there are unsold players then ready them for next iteration
+        // if no bid is made on current player then move it to unsold state
         else {
-          store.remainingPlayers = store.unsoldPlayers
-          store.unsoldPlayers = []
+          store.unsoldPlayers.push(store.currentPlayer.id)
+          store.currentPlayer = null
+        }
+        // if no player is remaining
+        if (store.remainingPlayers.length === 0) {
+          // if all players are sold then end auction
+          if (store.unsoldPlayers.length === 0) {
+            store.currentPlayer = null
+            clearInterval(auctionTimer)
+            return updateStore(store).then((store) => {
+              console.log('----final-store', store)
+              refreshClients('auction-ended', store)
+            })
+          }
+          // if there are unsold players then ready them for next iteration
+          else {
+            store.remainingPlayers = store.unsoldPlayers
+            store.unsoldPlayers = []
+          }
+        }
+        // pull next player from remaining players
+        if (store.remainingPlayers.length > 0) {
+          store.currentPlayer = {
+            id: store.remainingPlayers[0],
+            bidAmount: DEFAULT_BID_AMOUNT,
+            bids: [],
+            clock: AUCTION_INTERVAL_IN_SEC,
+          }
+          store.remainingPlayers.shift()
         }
       }
-      // pull next player from remaining players
-      if (store.remainingPlayers.length > 0) {
-        store.currentPlayer = {
-          id: store.remainingPlayers[0],
-          bidAmount: DEFAULT_BID_AMOUNT,
-          bids: [],
-          clock: AUCTION_INTERVAL_IN_SEC,
-        }
-        store.remainingPlayers.shift()
-      }
-    }
-    // update the store
-    updateStore(store).then((store) => {
-      // send event to clients
-      refreshClients('timer-updated', store)
+      // update the store
+      return updateStore(store).then((store) => {
+        // send event to clients
+        refreshClients('timer-updated', store)
+      })
     })
-  })
+    .catch((err) => {
+      if (err) {
+        clearInterval(auctionTimer)
+        console.log('Error while updating auction-state', err)
+      }
+    })
 }
 
 const resetAuctionTimer = () => {
   clearInterval(auctionTimer)
   auctionTimer = setInterval(() => {
+    // handling infinite loops of iterations
+    if (cnt_interval_iterations > MAX_INTERVAL_ITERATIONS) {
+      clearInterval(auctionTimer)
+      return
+    }
     updateAuctionState()
   }, 1000)
 }
@@ -120,10 +137,12 @@ const startAuction = () => {
   // clearing the previous interval if present
   clearInterval(auctionTimer)
   // fetch store and ready first player for auction
-  getStore().then((store) => {
+  return getStore().then((store) => {
     // start auction only when there is no player in current state and there exists some players in remaining state
+    if (store.state !== 'ready') throw Error('auction state not in ready state')
+
     if (store.remainingPlayers.length === 0 || store.currentPlayer !== null)
-      throw Error('invalid starting auction state')
+      throw Error('invalid starting auction data')
 
     // ready first player for auction
     store.currentPlayer = {
@@ -133,41 +152,94 @@ const startAuction = () => {
       clock: AUCTION_INTERVAL_IN_SEC,
     }
     store.remainingPlayers.shift()
+    store.state = 'progress'
     // update store and start auction timer
-    updateStore(store).then((store) => {
+    return updateStore(store).then((store) => {
       // refresh clients
       refreshClients('auction-started', store)
       // set interval
       auctionTimer = setInterval(() => {
+        // handling infinite loops of interval
+        if (cnt_interval_iterations > MAX_INTERVAL_ITERATIONS) {
+          clearInterval(auctionTimer)
+          return
+        }
         updateAuctionState()
       }, 1000)
     })
   })
 }
 
-module.exports.startAuction = (req, res, next) => {
-  // initialize local database for auction process
-  Player.find()
-    .select('playerId')
-    .lean()
-    .then((players) => {
-      const store = {
-        ...STORE_INITIAL_STATE,
-        remainingPlayers: players.map((el) => el._id.toString()),
-      }
-      return initializeStore(store)
-    })
-    .then((store) => {
-      startAuction()
-      return res.status(200).json({
-        status: 'ok',
-        msg: 'auction started',
-        data: store,
+module.exports.startAuction = async (req, res, next) => {
+  try {
+    const { accountId } = req.body
+    // check accountid is provided
+    if (!accountId) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Account not provided for auction',
       })
+    }
+    // check account exists
+    const account = Account.find(accountId)
+    if (!account)
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Given account not exist',
+      })
+    // check teams exist under account
+    const teams = await Team.find({ accountId: accountId }).lean()
+    if (teams.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'No team is present for given account',
+      })
+    }
+    // check all the teams have team owner set
+    const teamOwners = []
+    for (let team of teams) {
+      if (!team.teamOwner)
+        return res.status(400).json({
+          status: 'error',
+          msg: 'team owner is not set for all the teams under the account',
+        })
+      teamOwners.push(team.teamOwner.playerId.toString())
+    }
+    // check players exist under account excluding team owners
+    let players = await Player.find({ accountId: accountId }).lean()
+    players = players.filter(
+      (player) => !teamOwners.includes(player._id.toString())
+    )
+    if (players.length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'No player is present for auction for given account',
+      })
+    }
+    // check state of auction should be null or undefined
+    let store = await getStore()
+    if (store.state) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Auction not in null state, reset the auction',
+      })
+    }
+    // initialize local database for auction process
+    store = await initializeStore({
+      ...STORE_INITIAL_STATE,
+      state: 'ready',
+      teams: teams.map((team) => team._id.toString()),
+      remainingPlayers: players.map((player) => player._id.toString()),
     })
-    .catch((err) => {
-      next(err)
+    // start the auction process and send response to client
+    await startAuction()
+    return res.status(200).json({
+      status: 'ok',
+      msg: 'auction started for ' + account.name,
     })
+  } catch (err) {
+    next(err)
+  }
 }
 
 module.exports.pauseAuction = (req, res, next) => {
@@ -178,9 +250,25 @@ module.exports.pauseAuction = (req, res, next) => {
   })
 }
 
+module.exports.resetAuction = (req, res, next) => {
+  clearInterval(auctionTimer)
+  initializeStore(STORE_INITIAL_STATE)
+    .then((store) => {
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'auction reset completed',
+        data: store,
+      })
+    })
+    .catch((err) => {
+      next(err)
+    })
+}
+
 module.exports.postBid = (req, res, next) => {
-  const { playerId, teamId } = req.body
-  if (!playerId || !teamId) {
+  const { playerId, teamId, amount } = req.body
+  const nextBidAmount = +amount
+  if (!playerId || !teamId || !amount) {
     return res.status(400).json({
       status: 'error',
       msg: 'insufficient payload for bid',
@@ -188,11 +276,28 @@ module.exports.postBid = (req, res, next) => {
   }
   getStore()
     .then((store) => {
-      // match current player-id
-      if (playerId !== store.currentPlayer.id) {
+      // check team access to current auction
+      if (!store.teams.includes(teamId)) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'team does not have access to current auction',
+        })
+      }
+      // check auction is in progres and match current player-id
+      if (!store.currentPlayer || playerId !== store.currentPlayer.id) {
         return res.status(400).json({
           status: 'error',
           msg: 'player not present for auction, refresh and check again',
+        })
+      }
+      // check validity of next bid-amount to be placed
+      if (
+        isNaN(nextBidAmount) ||
+        nextBidAmount < store.currentPlayer.bidAmount
+      ) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'bid amount not valid',
         })
       }
       // check if current team already bidded on the player
@@ -208,15 +313,13 @@ module.exports.postBid = (req, res, next) => {
           msg: 'last bid is made by same team',
         })
       }
+
       // else create bid in the auctionState
       return updateStore({
         'currentPlayer.bids': [...store.currentPlayer.bids, store.bids.length],
-        'currentPlayer.bidAmount': store.currentPlayer.bidAmount + BID_INCREASE,
+        'currentPlayer.bidAmount': nextBidAmount + BID_INCREASE,
         'currentPlayer.clock': AUCTION_INTERVAL_IN_SEC,
-        bids: [
-          ...store.bids,
-          { playerId, teamId, amount: store.currentPlayer.bidAmount },
-        ],
+        bids: [...store.bids, { playerId, teamId, amount: nextBidAmount }],
       }).then((store) => {
         // resyncing the clocks
         resetAuctionTimer()
@@ -226,6 +329,7 @@ module.exports.postBid = (req, res, next) => {
         return res.status(200).json({
           status: 'ok',
           msg: 'bid made successfully',
+          bid: { playerId, teamId, nextBidAmount },
         })
       })
     })
