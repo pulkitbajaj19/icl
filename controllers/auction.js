@@ -16,7 +16,8 @@ const {
 
 // AUCTION_SCHEMA : {
 //   state: (null/'ready'/'progress'/'completed'/)
-//   teams: [<teamId>]
+//   teams: [<teamId>],
+//   budget: {teamId: <budget>}
 //   remainingPlayers : [<playerId>]
 //   unsoldPlayers: [<playerId>]
 //   soldPlayers: [<playerId>],
@@ -38,6 +39,7 @@ let cnt_interval_iterations = 0
 const STORE_INITIAL_STATE = {
   state: null,
   teams: [],
+  budget: {},
   remainingPlayers: [],
   unsoldPlayers: [],
   soldPlayers: [],
@@ -69,9 +71,16 @@ const updateAuctionState = () => {
       else {
         // if current player is bidded by some team then move it to sold state
         if (store.currentPlayer.bids.length > 0) {
+          // push the player to sold
           store.soldPlayers.push(store.currentPlayer.id)
-          store.playerLastBid[store.currentPlayer.id] =
-            store.currentPlayer.bids[store.currentPlayer.bids.length - 1]
+          const playerId = store.currentPlayer.id
+          const playerBids = store.currentPlayer.bids
+          const lastBidId = playerBids[playerBids.length - 1]
+          const lastBidData = store.bids[lastBidId]
+          // udpate the player-last-bid and budget of the corresponding team
+          store.playerLastBid[playerId] = lastBidId
+          store.budget[lastBidData.teamId] -= lastBidData.amount
+          // remove the player from current
           store.currentPlayer = null
         }
         // if no bid is made on current player then move it to unsold state
@@ -189,6 +198,7 @@ module.exports.startAuction = async (req, res, next) => {
       })
     // check teams exist under account
     const teams = await Team.find({ accountId: accountId }).lean()
+    const budget = {}
     if (teams.length === 0) {
       return res.status(400).json({
         status: 'error',
@@ -203,7 +213,9 @@ module.exports.startAuction = async (req, res, next) => {
           status: 'error',
           msg: 'team owner is not set for all the teams under the account',
         })
+      // set teamowners and budget for each team of given account
       teamOwners.push(team.teamOwner.playerId.toString())
+      budget[team._id.toString()] = team.teamOwner.budget
     }
     // check players exist under account excluding team owners
     let players = await Player.find({ accountId: accountId }).lean()
@@ -229,6 +241,7 @@ module.exports.startAuction = async (req, res, next) => {
       ...STORE_INITIAL_STATE,
       state: 'ready',
       teams: teams.map((team) => team._id.toString()),
+      budget,
       remainingPlayers: players.map((player) => player._id.toString()),
     })
     // start the auction process and send response to client
@@ -236,6 +249,7 @@ module.exports.startAuction = async (req, res, next) => {
     return res.status(200).json({
       status: 'ok',
       msg: 'auction started for ' + account.name,
+      data: store,
     })
   } catch (err) {
     next(err)
@@ -267,7 +281,7 @@ module.exports.resetAuction = (req, res, next) => {
 
 module.exports.postBid = (req, res, next) => {
   const { playerId, teamId, amount } = req.body
-  const nextBidAmount = +amount
+  const bidAmount = +amount
   if (!playerId || !teamId || !amount) {
     return res.status(400).json({
       status: 'error',
@@ -291,13 +305,17 @@ module.exports.postBid = (req, res, next) => {
         })
       }
       // check validity of next bid-amount to be placed
-      if (
-        isNaN(nextBidAmount) ||
-        nextBidAmount < store.currentPlayer.bidAmount
-      ) {
+      if (isNaN(bidAmount) || bidAmount < store.currentPlayer.bidAmount) {
         return res.status(400).json({
           status: 'error',
           msg: 'bid amount not valid',
+        })
+      }
+      // check team has enough budget
+      if (bidAmount > store.budget[teamId]) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'team does not have enough budget',
         })
       }
       // check if current team already bidded on the player
@@ -317,9 +335,10 @@ module.exports.postBid = (req, res, next) => {
       // else create bid in the auctionState
       return updateStore({
         'currentPlayer.bids': [...store.currentPlayer.bids, store.bids.length],
-        'currentPlayer.bidAmount': nextBidAmount + BID_INCREASE,
+        'currentPlayer.bidAmount': bidAmount + BID_INCREASE,
         'currentPlayer.clock': AUCTION_INTERVAL_IN_SEC,
-        bids: [...store.bids, { playerId, teamId, amount: nextBidAmount }],
+        // [`budget.${teamId}`]: store.budget[teamId] - bidAmount,
+        bids: [...store.bids, { playerId, teamId, amount: bidAmount }],
       }).then((store) => {
         // resyncing the clocks
         resetAuctionTimer()
@@ -329,7 +348,7 @@ module.exports.postBid = (req, res, next) => {
         return res.status(200).json({
           status: 'ok',
           msg: 'bid made successfully',
-          bid: { playerId, teamId, nextBidAmount },
+          bid: { playerId, teamId, amount: bidAmount },
         })
       })
     })
