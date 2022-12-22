@@ -2,6 +2,7 @@ const Player = require('../models/player')
 
 exports.getAllPlayers = (req, res, next) => {
   Player.find()
+    .populate('accountId')
     .lean()
     .then((players) => {
       return res.json({
@@ -18,6 +19,7 @@ exports.getAllPlayers = (req, res, next) => {
 exports.getPlayerInfo = (req, res, next) => {
   const { playerId } = req.params
   Player.findById(playerId)
+    .populate('accountId')
     .lean()
     .then((player) => {
       return res.json({
