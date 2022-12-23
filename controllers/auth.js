@@ -4,6 +4,7 @@ const bcryptjs = require('bcryptjs')
 
 // import models
 const User = require('../models/user')
+const Team = require('../models/team')
 
 // constants
 const LOGIN_PERIOD_SEC = 36000
@@ -23,16 +24,19 @@ exports.getUser = async (req, res, next) => {
           msg: 'User not found',
         })
       }
-      // return user info
-      return res.status(200).json({
-        status: 'ok',
-        msg: 'User fetched successfully',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
+      Team.findOne({ 'teamOwner.userId': user._id }).then((team) => {
+        // return user info
+        return res.status(200).json({
+          status: 'ok',
+          msg: 'User fetched successfully',
+          user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            teamId: team ? team._id : null,
+          },
+        })
       })
     })
     .catch((err) => {
@@ -78,7 +82,11 @@ exports.postLogin = (req, res, next) => {
               console.log('-----error-while-signing-jwt---', err)
               throw err
             }
-            return res.status(200).json({ token })
+            return res.status(200).json({
+              status: 'ok',
+              msg: 'authentication success',
+              token: token,
+            })
           }
         )
       })
