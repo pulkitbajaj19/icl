@@ -8,7 +8,6 @@ const {
   updateStore,
 } = require('../database/localdb')
 const {
-  MAX_INTERVAL_ITERATIONS,
   DEFAULT_BID_AMOUNT,
   BID_INCREASE,
   AUCTION_INTERVAL_IN_SEC,
@@ -35,6 +34,7 @@ const {
 
 let auctionTimer
 let cnt_interval_iterations = 0
+const MAX_INTERVAL_ITERATIONS = 1000
 
 const STORE_INITIAL_STATE = {
   state: null,
@@ -337,7 +337,6 @@ module.exports.postBid = (req, res, next) => {
         'currentPlayer.bids': [...store.currentPlayer.bids, store.bids.length],
         'currentPlayer.bidAmount': bidAmount + BID_INCREASE,
         'currentPlayer.clock': AUCTION_INTERVAL_IN_SEC,
-        // [`budget.${teamId}`]: store.budget[teamId] - bidAmount,
         bids: [...store.bids, { playerId, teamId, amount: bidAmount }],
       }).then((store) => {
         // resyncing the clocks
