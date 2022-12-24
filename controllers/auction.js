@@ -2,6 +2,8 @@ const socket = require('../socket')
 const Account = require('../models/account')
 const Team = require('../models/team')
 const Player = require('../models/player')
+const Bid = require('../models/bid')
+
 const {
   initializeStore,
   getStore,
@@ -15,6 +17,7 @@ const {
 
 // AUCTION_SCHEMA : {
 //   state: (null/'ready'/'progress'/'completed'/)
+//   accountId: null,
 //   teams: [<teamId>],
 //   budget: {teamId: <budget>}
 //   remainingPlayers : [<playerId>]
@@ -28,7 +31,7 @@ const {
 //     clock: <clock>
 //   }
 //   bids : [
-//     {playerId : <playerId>, teamId: <teamId>, amount: <amount> }
+//     {playerId : <playerId>, teamId: <teamId>, amount: <amount>, timestamp: <timestamp> }
 //   ]
 // }
 
@@ -38,6 +41,7 @@ const MAX_INTERVAL_ITERATIONS = 1000
 
 const STORE_INITIAL_STATE = {
   state: null,
+  accountId: null,
   teams: [],
   budget: {},
   remainingPlayers: [],
@@ -53,6 +57,22 @@ const refreshClients = (eventType, data) => {
     type: eventType,
     data: data,
   })
+}
+
+const saveAuction = async () => {
+  const store = await getStore()
+  await Account.findByIdAndUpdate(store.accountId, { isAuctioned: true })
+  await Bid.insertMany(store.bids.map((bid, i) => ({ ...bid, index: i })))
+  for (let playerId of store.soldPlayers) {
+    const lastBidId = store.playerLastBid[playerId]
+    const lastBid = store.bids[lastBidId]
+    const { teamId, timestamp } = lastBid
+    const player = await Player.findById(playerId)
+    player.teamId = teamId
+    player.lastBid = await Bid.findOne({ timestamp })
+    await player.save()
+  }
+  console.log('---------auction-saved-----------')
 }
 
 const updateAuctionState = () => {
@@ -96,6 +116,7 @@ const updateAuctionState = () => {
             clearInterval(auctionTimer)
             return updateStore(store).then((store) => {
               console.log('----final-store', store)
+              saveAuction()
               refreshClients('auction-ended', store)
             })
           }
@@ -240,6 +261,7 @@ module.exports.startAuction = async (req, res, next) => {
     store = await initializeStore({
       ...STORE_INITIAL_STATE,
       state: 'ready',
+      accountId: accountId,
       teams: teams.map((team) => team._id.toString()),
       budget,
       remainingPlayers: players.map((player) => player._id.toString()),
@@ -337,7 +359,10 @@ module.exports.postBid = (req, res, next) => {
         'currentPlayer.bids': [...store.currentPlayer.bids, store.bids.length],
         'currentPlayer.bidAmount': bidAmount + BID_INCREASE,
         'currentPlayer.clock': AUCTION_INTERVAL_IN_SEC,
-        bids: [...store.bids, { playerId, teamId, amount: bidAmount }],
+        bids: [
+          ...store.bids,
+          { playerId, teamId, amount: bidAmount, timestamp: Date.now() },
+        ],
       }).then((store) => {
         // resyncing the clocks
         resetAuctionTimer()
@@ -368,4 +393,12 @@ module.exports.getData = (req, res, next) => {
     .catch((err) => {
       next(err)
     })
+}
+
+module.exports.saveAuction = (req, res, next) => {
+  saveAuction()
+  return res.status(200).json({
+    status: 'ok',
+    msg: 'auction saved',
+  })
 }

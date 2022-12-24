@@ -13,6 +13,10 @@ const AccountSchema = Schema({
     type: Number,
     default: 0,
   },
+  isAuctioned: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 module.exports = mongoose.model('Account', AccountSchema)

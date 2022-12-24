@@ -38,6 +38,10 @@ const PlayerSchema = Schema({
   imageUrl: {
     type: String,
   },
+  lastBid: {
+    type: Schema.Types.ObjectId,
+    ref: 'Bid',
+  },
 })
 
 module.exports = mongoose.model('Player', PlayerSchema)

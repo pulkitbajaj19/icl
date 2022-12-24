@@ -17,4 +17,7 @@ router.get('/data', auctionController.getData)
 // POST bid on player
 router.post('/bid', auctionController.postBid)
 
+// POST save auction
+router.post('/save', auctionController.saveAuction)
+
 module.exports = router

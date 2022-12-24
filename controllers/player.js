@@ -2,7 +2,7 @@ const Player = require('../models/player')
 
 exports.getAllPlayers = (req, res, next) => {
   Player.find()
-    .populate('accountId')
+    .populate('accountId teamId lastBid')
     .lean()
     .then((players) => {
       return res.json({
