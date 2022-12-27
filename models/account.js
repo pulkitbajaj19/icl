@@ -9,10 +9,6 @@ const AccountSchema = Schema({
   totalCount: {
     type: Number,
   },
-  participantsCount: {
-    type: Number,
-    default: 0,
-  },
   isAuctioned: {
     type: Boolean,
     default: false,

@@ -45,18 +45,23 @@ exports.addPlayer = (req, res, next) => {
   player
     .save()
     .then((player) => {
-      return Account.findById(accountId)
-        .then((account) => {
-          account.participantsCount = account.participantsCount + 1
-          return account.save()
-        })
-        .then((account) => {
-          return res.status(200).json({
-            status: 'ok',
-            msg: 'player saved',
-            player: player,
-          })
-        })
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'player saved',
+        player: player,
+      })
+      // return Account.findById(accountId)
+      //   .then((account) => {
+      //     account.participantsCount = account.participantsCount + 1
+      //     return account.save()
+      //   })
+      //   .then((account) => {
+      //     return res.status(200).json({
+      //       status: 'ok',
+      //       msg: 'player saved',
+      //       player: player,
+      //     })
+      //   })
     })
     .catch((err) => {
       next(err)
