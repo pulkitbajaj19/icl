@@ -65,6 +65,7 @@ app.use((req, res, next) => {
 app.use(authMiddleware.setAuth)
 
 // serve static files
+app.use(express.static(path.join(__dirname, 'frontend-build')))
 app.use('/static', express.static(path.join(__dirname, 'static')))
 
 // serve routes
@@ -73,6 +74,13 @@ app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1/auction', auctionRoutes)
 app.use('/api/v1', entityRoutes)
+
+// serving frontend
+app.get('/*', (req, res) => {
+  return res
+    .status(200)
+    .sendFile(path.join(__dirname, 'frontend-build/index.html'))
+})
 
 // handling errors
 app.use((err, req, res, next) => {

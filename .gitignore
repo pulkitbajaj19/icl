@@ -118,7 +118,7 @@ dist
 .pnp.*
 
 # static files
-static/
+/static
 data
 
 # localdb
