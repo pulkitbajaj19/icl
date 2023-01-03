@@ -7,10 +7,6 @@ const PlayerSchema = Schema({
     required: true,
     ref: 'Account',
   },
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Team',
-  },
   name: {
     type: String,
     required: true,
@@ -38,9 +34,18 @@ const PlayerSchema = Schema({
   imageUrl: {
     type: String,
   },
+  // initialized after auction
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Team',
+  },
   lastBid: {
     type: Schema.Types.ObjectId,
     ref: 'Bid',
+  },
+  auctionStatus: {
+    type: String,
+    enum: ['SOLD', 'UNSOLD', 'OWNER'],
   },
 })
 
