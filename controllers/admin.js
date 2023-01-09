@@ -271,11 +271,22 @@ exports.deleteTeam = (req, res, next) => {
           msg: 'team not found',
         })
       }
-      return res.status(200).json({
-        status: 'ok',
-        msg: 'team deleted',
-        team: team,
-      })
+      if (team.teamOwner && team.teamOwner.userId) {
+        return User.findByIdAndDelete(team.teamOwner.userId).then((user) => {
+          return res.status(200).json({
+            status: 'ok',
+            msg: 'user and team deleted',
+            team: team,
+            user: user,
+          })
+        })
+      } else {
+        return res.status(200).json({
+          status: 'ok',
+          msg: 'team deleted',
+          team: team,
+        })
+      }
     })
     .catch((err) => {
       next(err)
