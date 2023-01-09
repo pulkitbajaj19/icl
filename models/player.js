@@ -25,6 +25,9 @@ const PlayerSchema = Schema({
     type: String,
     enum: ['Bowler', 'Spinner', 'All Rounder', 'Batsman', 'Keeper'],
   },
+  level: {
+    type: String,
+  },
   rating: {
     type: Number,
   },
