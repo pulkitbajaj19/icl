@@ -17,6 +17,7 @@ const {
 
 // AUCTION_SCHEMA : {
 //   state: (null/'ready'/'progress'/'completed'/'pause')
+//   round: <roundNumber>
 //   accountId: null,
 //   teams: [<teamId>],
 //   budget: {teamId: <budget>}
@@ -42,6 +43,7 @@ const MAX_INTERVAL_ITERATIONS = 1000
 const STORE_INITIAL_STATE = {
   state: null,
   accountId: null,
+  round: 0,
   teams: [],
   budget: {},
   remainingPlayers: [],
@@ -169,6 +171,7 @@ const updateAuctionState = () => {
           }
           store.remainingPlayers.shift()
           store.state = 'ready'
+          store.round += 1
           return updateStore(store).then((store) => {
             refreshClients('ROUND_ENDED', store)
           })

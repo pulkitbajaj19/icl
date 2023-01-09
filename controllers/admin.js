@@ -286,9 +286,16 @@ exports.setTeamOwner = async (req, res, next) => {
   const { teamId, playerId, email, password, budget } = req.body
   Promise.all([
     Team.findById(teamId).populate('teamOwner.userId'),
+    Player.findById(playerId),
     bcryptjs.hash(password, 12),
   ])
-    .then(([team, hashedPassword]) => {
+    .then(([team, player, hashedPassword]) => {
+      if (!team || !player) {
+        return res.json({
+          status: 'error',
+          msg: 'invalid team or player for setting team owner',
+        })
+      }
       let user
       if (team.teamOwner) {
         user = team.teamOwner.userId
@@ -310,13 +317,16 @@ exports.setTeamOwner = async (req, res, next) => {
             playerId: playerId,
             budget: budget,
           }
-          return team.save()
+          player.teamId = teamId
+          player.auctionStatus = 'OWNER'
+          return Promise.all([team.save(), player.save()])
         })
-        .then((team) => {
+        .then(([team, player]) => {
           return res.status(200).json({
             status: 'ok',
             msg: 'team owner is set successfully',
             teamOwner: team.teamOwner,
+            player: player,
           })
         })
     })
