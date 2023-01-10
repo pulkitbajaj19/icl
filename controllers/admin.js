@@ -8,8 +8,17 @@ const User = require('../models/user')
 
 exports.addPlayer = (req, res, next) => {
   console.log('-----body', req.body)
-  const { name, accountId, employeeId, email, skill, bio, gender, rating } =
-    req.body
+  const {
+    name,
+    accountId,
+    employeeId,
+    email,
+    skill,
+    level,
+    bio,
+    gender,
+    rating,
+  } = req.body
   // check validity of name
   if (!name) {
     return res.status(400).json({
@@ -36,6 +45,7 @@ exports.addPlayer = (req, res, next) => {
     employeeId,
     email,
     skill,
+    level,
     bio,
     imageUrl,
     gender,
@@ -77,6 +87,7 @@ exports.editPlayer = (req, res, next) => {
     employeeId,
     email,
     skill,
+    level,
     bio,
     gender,
     rating,
@@ -88,6 +99,7 @@ exports.editPlayer = (req, res, next) => {
       player.accountId = accountId
       player.email = email
       player.skill = skill
+      player.level = level
       player.bio = bio
       player.gender = gender
       player.rating = rating
