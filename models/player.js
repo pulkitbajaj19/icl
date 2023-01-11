@@ -48,7 +48,7 @@ const PlayerSchema = Schema({
   },
   auctionStatus: {
     type: String,
-    enum: ['SOLD', 'UNSOLD', 'OWNER'],
+    enum: [null, 'SOLD', 'UNSOLD', 'OWNER'],
   },
 })
 

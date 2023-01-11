@@ -1,3 +1,3 @@
-exports.DEFAULT_BID_AMOUNT = process.env.BID_AMOUNT || 1000
-exports.BID_INCREASE = process.env.BID_INCREASE || 100
+exports.DEFAULT_BID_AMOUNT = process.env.BID_AMOUNT || 5000
+exports.BID_INCREASE = process.env.BID_INCREASE || 500
 exports.AUCTION_INTERVAL_IN_SEC = process.env.AUCTION_INTERVAL_IN_SEC || 30
