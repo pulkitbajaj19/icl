@@ -34,4 +34,7 @@ router.post('/teamowner/patch', adminController.setTeamOwner)
 // POST  add user
 router.post('/user/add', adminController.addUser)
 
+// PATCH reset auction data
+router.patch('/auction/reset', adminController.resetAuctionData)
+
 module.exports = router

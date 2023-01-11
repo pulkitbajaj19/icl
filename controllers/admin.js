@@ -5,6 +5,7 @@ const Player = require('../models/player')
 const Account = require('../models/account')
 const Team = require('../models/team')
 const User = require('../models/user')
+const Bid = require('../models/bid')
 
 exports.addPlayer = (req, res, next) => {
   console.log('-----body', req.body)
@@ -395,4 +396,18 @@ exports.addUser = (req, res, next) => {
     .catch((err) => {
       next(err)
     })
+}
+
+exports.resetAuctionData = async (req, res, next) => {
+  try {
+    await Player.updateMany(
+      { auctionStatus: { $ne: 'OWNER' } },
+      { teamId: null, lastBid: null, auctionStatus: null }
+    )
+    await Account.updateMany({}, { isAuctioned: false })
+    await Bid.deleteMany({})
+    return res.status(200).json({ status: 'ok', msg: 'reset completed' })
+  } catch (err) {
+    next(err)
+  }
 }
