@@ -132,21 +132,31 @@ exports.deletePlayer = (req, res, next) => {
           msg: 'Player not found',
         })
       }
-      // decrease participant count of account
-      return Account.findById(player.accountId)
-        .then((account) => {
-          if (account) {
-            account.participantsCount -= 1
-            return account.save()
-          }
-        })
-        .then((account) => {
-          return res.status(200).json({
-            status: 'ok',
-            msg: 'Deleted',
-            player: player,
+      // if player is team owner then unlink him from team
+      if (player.auctionStatus === 'OWNER' && player.teamId) {
+        return Team.findById(player.teamId).then((team) => {
+          const userId = team.teamOwner.userId
+          team.teamOwner = null
+          return Promise.all([
+            User.findByIdAndDelete(userId),
+            team.save(),
+          ]).then(([user, team]) => {
+            return res.json({
+              status: 'ok',
+              msg: 'player deleted and teamowner reset',
+              player: player,
+              team: team,
+              user: user,
+            })
           })
         })
+      }
+
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'Deleted',
+        player: player,
+      })
     })
     .catch((err) => {
       next(err)
@@ -284,12 +294,21 @@ exports.deleteTeam = (req, res, next) => {
           msg: 'team not found',
         })
       }
-      if (team.teamOwner && team.teamOwner.userId) {
-        return User.findByIdAndDelete(team.teamOwner.userId).then((user) => {
+      if (team.teamOwner) {
+        const playerId = team.teamOwner.playerId
+        const userId = team.teamOwner.userId
+        return Promise.all([
+          Player.findByIdAndUpdate(playerId, {
+            auctionStatus: null,
+            teamId: null,
+          }),
+          User.findByIdAndDelete(userId),
+        ]).then(([player, user]) => {
           return res.status(200).json({
             status: 'ok',
             msg: 'user and team deleted',
             team: team,
+            player: player,
             user: user,
           })
         })
@@ -322,6 +341,13 @@ exports.setTeamOwner = async (req, res, next) => {
       }
       let user
       if (team.teamOwner) {
+        const playerId = team.teamOwner.playerId
+        if (playerId) {
+          Player.findByIdAndUpdate(playerId, {
+            auctionStatus: null,
+            teamOwner: null,
+          })
+        }
         user = team.teamOwner.userId
         user.email = email
         user.password = hashedPassword
