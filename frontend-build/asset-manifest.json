@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.d5835d42.css",
-    "main.js": "/static/js/main.cfa7eac8.js",
+    "main.css": "/static/css/main.71ff919a.css",
+    "main.js": "/static/js/main.24294734.js",
     "static/js/787.0ba1babe.chunk.js": "/static/js/787.0ba1babe.chunk.js",
     "static/media/ICL_Logo.svg": "/static/media/ICL_Logo.03ffd056fb7045d61cf93730975c4561.svg",
     "static/media/nucleo.eot": "/static/media/nucleo.bd5cce8bf40be5947637.eot",
@@ -9,12 +9,12 @@
     "static/media/nucleo.woff": "/static/media/nucleo.5c65ef4d6434bb8062a3.woff",
     "static/media/nucleo.woff2": "/static/media/nucleo.6dfb4833e3a0132fd1fc.woff2",
     "index.html": "/index.html",
-    "main.d5835d42.css.map": "/static/css/main.d5835d42.css.map",
-    "main.cfa7eac8.js.map": "/static/js/main.cfa7eac8.js.map",
+    "main.71ff919a.css.map": "/static/css/main.71ff919a.css.map",
+    "main.24294734.js.map": "/static/js/main.24294734.js.map",
     "787.0ba1babe.chunk.js.map": "/static/js/787.0ba1babe.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.d5835d42.css",
-    "static/js/main.cfa7eac8.js"
+    "static/css/main.71ff919a.css",
+    "static/js/main.24294734.js"
   ]
 }
