@@ -5,6 +5,7 @@ const Player = require('../models/player')
 const Account = require('../models/account')
 const Team = require('../models/team')
 const User = require('../models/user')
+const Bid = require('../models/bid')
 
 exports.addPlayer = (req, res, next) => {
   console.log('-----body', req.body)
@@ -131,21 +132,31 @@ exports.deletePlayer = (req, res, next) => {
           msg: 'Player not found',
         })
       }
-      // decrease participant count of account
-      return Account.findById(player.accountId)
-        .then((account) => {
-          if (account) {
-            account.participantsCount -= 1
-            return account.save()
-          }
-        })
-        .then((account) => {
-          return res.status(200).json({
-            status: 'ok',
-            msg: 'Deleted',
-            player: player,
+      // if player is team owner then unlink him from team
+      if (player.auctionStatus === 'OWNER' && player.teamId) {
+        return Team.findById(player.teamId).then((team) => {
+          const userId = team.teamOwner.userId
+          team.teamOwner = null
+          return Promise.all([
+            User.findByIdAndDelete(userId),
+            team.save(),
+          ]).then(([user, team]) => {
+            return res.json({
+              status: 'ok',
+              msg: 'player deleted and teamowner reset',
+              player: player,
+              team: team,
+              user: user,
+            })
           })
         })
+      }
+
+      return res.status(200).json({
+        status: 'ok',
+        msg: 'Deleted',
+        player: player,
+      })
     })
     .catch((err) => {
       next(err)
@@ -283,12 +294,21 @@ exports.deleteTeam = (req, res, next) => {
           msg: 'team not found',
         })
       }
-      if (team.teamOwner && team.teamOwner.userId) {
-        return User.findByIdAndDelete(team.teamOwner.userId).then((user) => {
+      if (team.teamOwner) {
+        const playerId = team.teamOwner.playerId
+        const userId = team.teamOwner.userId
+        return Promise.all([
+          Player.findByIdAndUpdate(playerId, {
+            auctionStatus: null,
+            teamId: null,
+          }),
+          User.findByIdAndDelete(userId),
+        ]).then(([player, user]) => {
           return res.status(200).json({
             status: 'ok',
             msg: 'user and team deleted',
             team: team,
+            player: player,
             user: user,
           })
         })
@@ -306,56 +326,87 @@ exports.deleteTeam = (req, res, next) => {
 }
 
 exports.setTeamOwner = async (req, res, next) => {
-  const { teamId, playerId, email, password, budget } = req.body
-  Promise.all([
-    Team.findById(teamId).populate('teamOwner.userId'),
-    Player.findById(playerId),
-    bcryptjs.hash(password, 12),
-  ])
-    .then(([team, player, hashedPassword]) => {
-      if (!team || !player) {
-        return res.json({
-          status: 'error',
-          msg: 'invalid team or player for setting team owner',
+  try {
+    const { teamId, playerId, email, password, budget } = req.body
+    if (!teamId || !playerId || !email || !password || !budget) {
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Insufficient payload provided',
+      })
+    }
+
+    // fetch team
+    const team = await Team.findById(teamId)
+    if (!team)
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Team not present',
+      })
+
+    // fetch player
+    const player = await Player.findById(playerId)
+    if (!player)
+      return res.status(400).json({
+        status: 'error',
+        msg: 'Player not present',
+      })
+
+    // create hashed password
+    const hashedPassword = await bcryptjs.hash(password, 12)
+
+    let updatedUser
+    // if team-owner is present then delink the player as owner and update the existing user account
+    if (team.teamOwner) {
+      const userId = team.teamOwner.userId
+      const prevPlayerId = team.teamOwner.playerId
+      if (prevPlayerId) {
+        await Player.findByIdAndUpdate(prevPlayerId, {
+          auctionStatus: null,
+          teamId: null,
         })
       }
-      let user
-      if (team.teamOwner) {
-        user = team.teamOwner.userId
-        user.email = email
-        user.password = hashedPassword
-        user.role = 'owner'
-      } else {
-        user = new User({
+      if (userId) {
+        updatedUser = await User.findByIdAndUpdate(userId, {
           email: email,
           password: hashedPassword,
           role: 'owner',
         })
       }
-      return user
-        .save()
-        .then((user) => {
-          team.teamOwner = {
-            userId: user,
-            playerId: playerId,
-            budget: budget,
-          }
-          player.teamId = teamId
-          player.auctionStatus = 'OWNER'
-          return Promise.all([team.save(), player.save()])
-        })
-        .then(([team, player]) => {
-          return res.status(200).json({
-            status: 'ok',
-            msg: 'team owner is set successfully',
-            teamOwner: team.teamOwner,
-            player: player,
-          })
-        })
+    }
+    // if team-owner is not present then create a new user
+    else {
+      updatedUser = new User({
+        email: email,
+        password: hashedPassword,
+        role: 'owner',
+      })
+      await updatedUser.save()
+    }
+
+    // set the teamowner of team
+    team.teamOwner = {
+      userId: updatedUser ? updatedUser._id : null,
+      playerId: playerId,
+      budget: budget,
+    }
+    await team.save()
+
+    // link the player as team owner and assign team to him
+    player.teamId = teamId
+    player.auctionStatus = 'OWNER'
+    await player.save()
+
+    // return the response
+    return res.status(200).json({
+      status: 'ok',
+      msg: 'team owner updated',
+      team: team,
+      player: player,
+      user: updatedUser,
     })
-    .catch((err) => {
-      next(err)
-    })
+  } catch (err) {
+    next(err)
+  }
 }
 
 exports.addUser = (req, res, next) => {
@@ -395,4 +446,18 @@ exports.addUser = (req, res, next) => {
     .catch((err) => {
       next(err)
     })
+}
+
+exports.resetAuctionData = async (req, res, next) => {
+  try {
+    await Player.updateMany(
+      { auctionStatus: { $ne: 'OWNER' } },
+      { teamId: null, lastBid: null, auctionStatus: null }
+    )
+    await Account.updateMany({}, { isAuctioned: false })
+    await Bid.deleteMany({})
+    return res.status(200).json({ status: 'ok', msg: 'reset completed' })
+  } catch (err) {
+    next(err)
+  }
 }

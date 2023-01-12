@@ -9,11 +9,22 @@ const {
   getStore,
   updateStore,
 } = require('../database/localdb')
+
 const {
   DEFAULT_BID_AMOUNT,
   BID_INCREASE,
   AUCTION_INTERVAL_IN_SEC,
 } = require('../constants')
+
+const eventType = {
+  AUCTION_INITIALIZED: 'AUCTION_INITIALIZED',
+  TIMER_UPDATED: 'TIMER_UPDATED',
+  BID: 'BID',
+  PLAYER_AUCTION_ENDED: 'PLAYER_AUCTION_ENDED',
+  ROUND_ENDED: 'ROUND_ENDED',
+  ACCOUNT_AUCTION_COMPLETED: 'ACCOUNT_AUCTION_COMPLETED',
+  ACCOUNT_AUCTION_CLEARED: 'ACCOUNT_AUCTION_CLEARED',
+}
 
 // AUCTION_SCHEMA : {
 //   state: (null/'ready'/'progress'/'completed'/'pause')
@@ -31,6 +42,7 @@ const {
 //     bids : [<bidId>]
 //     clock: <clock>
 //   }
+//   prevPlayer: <id>
 //   bids : [
 //     {playerId : <playerId>, teamId: <teamId>, amount: <amount>, timestamp: <timestamp> }
 //   ]
@@ -47,6 +59,7 @@ const STORE_INITIAL_STATE = {
   teams: [],
   budget: {},
   remainingPlayers: [],
+  prevPlayer: null,
   unsoldPlayers: [],
   soldPlayers: [],
   playerLastBid: {},
@@ -105,7 +118,7 @@ const updateAuctionState = () => {
         store.currentPlayer.clock = store.currentPlayer.clock - 1
         return updateStore(store).then((store) => {
           // send event to clients
-          refreshClients('TIMER_UPDATED', store)
+          refreshClients(eventType.TIMER_UPDATED, store)
         })
       }
 
@@ -115,6 +128,7 @@ const updateAuctionState = () => {
 
       // save current player in database
       return saveCurrentPlayer().then(() => {
+        store.prevPlayer = store.currentPlayer.id
         // if current player is bidded by some team then move it to sold state
         if (store.currentPlayer.bids.length > 0) {
           // push the player to sold
@@ -147,7 +161,7 @@ const updateAuctionState = () => {
           store.remainingPlayers.shift()
           store.state = 'ready'
           return updateStore(store).then((store) => {
-            refreshClients('AUCTION_ENDED', store)
+            refreshClients(eventType.PLAYER_AUCTION_ENDED, store)
           })
         }
 
@@ -155,7 +169,7 @@ const updateAuctionState = () => {
         if (store.unsoldPlayers.length === 0) {
           store.state = 'complete'
           return updateStore(store).then((store) => {
-            refreshClients('ACCOUNT_AUCTION_COMPLETE', store)
+            refreshClients(eventType.ACCOUNT_AUCTION_COMPLETED, store)
           })
         }
 
@@ -173,7 +187,7 @@ const updateAuctionState = () => {
           store.state = 'ready'
           store.round += 1
           return updateStore(store).then((store) => {
-            refreshClients('ROUND_ENDED', store)
+            refreshClients(eventType.ROUND_ENDED, store)
           })
         }
       })
@@ -302,7 +316,7 @@ module.exports.initializeAuction = async (req, res, next) => {
 
     await Account.findByIdAndUpdate(accountId, { isAuctioned: true })
     // refresh clients for auction started
-    refreshClients('AUCTION_INITIALIZED', store)
+    refreshClients(eventType.AUCTION_INITIALIZED, store)
 
     // start the auction process and send response to client
     return res.status(200).json({
@@ -346,13 +360,43 @@ module.exports.pauseAuction = (req, res, next) => {
     })
 }
 
-module.exports.resetAuction = (req, res, next) => {
+module.exports.endAuction = (req, res, next) => {
+  getStore()
+    .then((store) => {
+      // check if auction in valid state to be ended
+      if (
+        store.state !== 'ready' &&
+        store.state !== 'progress' &&
+        store.state !== 'completed' &&
+        store.state !== 'pause'
+      )
+        return res.status(400).json({
+          status: 'error',
+          msg: 'auction not in [ready/progress/completed/paused] state',
+        })
+      store.state = 'completed'
+      store.currentPlayer = null
+      store.remainingPlayers = []
+      return updateStore(store).then((store) => {
+        refreshClients(eventType.ACCOUNT_AUCTION_COMPLETED, store)
+        return res.status(200).json({
+          status: 'ok',
+          msg: 'auction force-completed',
+          store: store,
+        })
+      })
+    })
+    .catch((err) => next(err))
+}
+
+module.exports.clearAuction = (req, res, next) => {
   clearInterval(auctionTimer)
   initializeStore(STORE_INITIAL_STATE)
     .then((store) => {
+      refreshClients(eventType.ACCOUNT_AUCTION_CLEARED, store)
       return res.status(200).json({
         status: 'ok',
-        msg: 'auction reset completed',
+        msg: 'auction cleared',
         data: store,
       })
     })
@@ -431,7 +475,7 @@ module.exports.postBid = (req, res, next) => {
       }).then((store) => {
         setAuctionInterval()
         // updating clients
-        refreshClients('BID', store)
+        refreshClients(eventType.BID, store)
         // returning response
         return res.status(200).json({
           status: 'ok',
