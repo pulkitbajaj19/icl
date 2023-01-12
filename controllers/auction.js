@@ -31,6 +31,7 @@ const {
 //     bids : [<bidId>]
 //     clock: <clock>
 //   }
+//   prevPlayer: <id>
 //   bids : [
 //     {playerId : <playerId>, teamId: <teamId>, amount: <amount>, timestamp: <timestamp> }
 //   ]
@@ -47,6 +48,7 @@ const STORE_INITIAL_STATE = {
   teams: [],
   budget: {},
   remainingPlayers: [],
+  prevPlayer: null,
   unsoldPlayers: [],
   soldPlayers: [],
   playerLastBid: {},
@@ -115,6 +117,7 @@ const updateAuctionState = () => {
 
       // save current player in database
       return saveCurrentPlayer().then(() => {
+        store.prevPlayer = store.currentPlayer.id
         // if current player is bidded by some team then move it to sold state
         if (store.currentPlayer.bids.length > 0) {
           // push the player to sold
