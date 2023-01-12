@@ -11,8 +11,11 @@ router.post('/start', auctionController.triggerPlayerAuction)
 // POST pause auction
 router.post('/pause', auctionController.pauseAuction)
 
-// POST reset auction
-router.post('/reset', auctionController.resetAuction)
+// POST end auction
+router.post('/end', auctionController.endAuction)
+
+// POST clear auction
+router.post('/clear', auctionController.clearAuction)
 
 // GET auction data
 router.get('/data', auctionController.getData)
